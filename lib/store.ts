@@ -1,20 +1,22 @@
 "use client";
 
 import { create } from "zustand";
-import { clearLocalStorage, loadFromLocalStorage, saveToLocalStorage } from "./storage";
+import { computeMRI, devCheckMRI, withValidatedScores } from "./mriCalculator";
 import {
   cloneSeedCategories,
   initialHeader,
   initialRunState,
+  type AuditExecutionResult,
   type CategoryKey,
   type CategoryScoreItem,
   type ComputedState,
   type HeaderState,
   type ImportExportState,
+  type LiveAuditMeta,
+  type RunProgressPhase,
   type RunState
 } from "./mriModel";
-import { computeMRI, devCheckMRI, withValidatedScores } from "./mriCalculator";
-import type { AuditorResult } from "./mockAuditor";
+import { clearLocalStorage, loadFromLocalStorage, saveToLocalStorage } from "./storage";
 
 function clampScore(input: number): number {
   if (!Number.isFinite(input)) return 0;
@@ -38,9 +40,17 @@ function toExportState(state: MRIStoreState): ImportExportState {
 
 function parseEvidenceInput(value: string): string[] {
   return value
-    .split(/\n|,/) 
+    .split(/\n|,/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function mergeRun(input: Partial<RunState> | undefined): RunState {
+  return {
+    ...initialRunState(),
+    ...(input ?? {}),
+    mode: "live"
+  };
 }
 
 export type MRIStoreState = {
@@ -62,7 +72,9 @@ export type MRIStoreState = {
   setCategoryEvidenceText: (categoryKey: CategoryKey, value: string) => void;
   setLearningIntegrationNotes: (text: string) => void;
   setRun: (partialRun: Partial<RunState>) => void;
-  applyAuditorResult: (result: AuditorResult) => void;
+  setRunPhase: (phase: RunProgressPhase, progressMessage: string) => void;
+  setRunLiveMeta: (meta: LiveAuditMeta) => void;
+  applyAuditorResult: (result: AuditExecutionResult) => void;
   recompute: () => void;
   resetAll: () => void;
   exportState: () => ImportExportState;
@@ -97,7 +109,7 @@ export const useMRIStore = create<MRIStoreState>((set, get) => ({
       header: stored.header ?? initialHeader(),
       categories: safeCategories,
       learningIntegrationNotes: stored.learningIntegrationNotes ?? "",
-      run: stored.run ?? initialRunState(),
+      run: mergeRun(stored.run),
       computed,
       importError: undefined
     });
@@ -165,7 +177,36 @@ export const useMRIStore = create<MRIStoreState>((set, get) => ({
   },
 
   setRun: (partialRun) => {
-    set((state) => ({ run: { ...state.run, ...partialRun } }));
+    set((state) => ({
+      run: {
+        ...state.run,
+        ...partialRun,
+        mode: "live"
+      }
+    }));
+    get().persistNow();
+  },
+
+  setRunPhase: (phase, progressMessage) => {
+    set((state) => ({
+      run: {
+        ...state.run,
+        mode: "live",
+        progressPhase: phase,
+        progressMessage
+      }
+    }));
+    get().persistNow();
+  },
+
+  setRunLiveMeta: (meta) => {
+    set((state) => ({
+      run: {
+        ...state.run,
+        mode: "live",
+        liveMeta: meta
+      }
+    }));
     get().persistNow();
   },
 
@@ -187,11 +228,15 @@ export const useMRIStore = create<MRIStoreState>((set, get) => ({
         categories,
         run: {
           ...state.run,
+          mode: "live",
           status: "done",
           finishedAt: new Date().toISOString(),
           steps: result.steps,
           blockers: result.blockers,
-          progressMessage: "Audit completed"
+          progressPhase: "finalizing",
+          progressMessage: "Live audit completed",
+          liveMeta: result.crawlMeta,
+          errorMessage: undefined
         },
         computed: computeMRI(categories)
       };
@@ -236,19 +281,15 @@ export const useMRIStore = create<MRIStoreState>((set, get) => ({
         }
       };
 
-      const nextState = {
+      set({
         header: safeHeader,
         categories: safeCategories,
         learningIntegrationNotes: input.learningIntegrationNotes ?? "",
-        run: {
-          ...initialRunState(),
-          ...(input.run ?? {})
-        },
+        run: mergeRun(input.run),
         computed: computeMRI(safeCategories),
         importError: undefined
-      };
+      });
 
-      set(nextState);
       get().persistNow();
       return { ok: true as const };
     } catch (error) {

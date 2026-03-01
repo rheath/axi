@@ -6,7 +6,7 @@ export default function LandingPage() {
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">AXI Public Beta</p>
       <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">MRI Scoring Model</h1>
       <p className="mt-4 max-w-2xl text-base text-slate-600 sm:text-lg">
-        Evaluate machine readiness with a spreadsheet-style scorecard, simulated AI auditor, and exportable report.
+        Evaluate machine readiness with a spreadsheet-style scorecard, live audit crawling, and exportable reporting.
       </p>
       <Link
         href="/score"

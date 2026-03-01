@@ -44,7 +44,7 @@ export default function SummaryPanel() {
 
       <h3 className="mt-4 text-sm font-semibold text-slate-800">Top Blockers</h3>
       {topBlockers.length === 0 ? (
-        <p className="mt-1 text-sm text-slate-500">Run the mock audit to generate blockers.</p>
+        <p className="mt-1 text-sm text-slate-500">Run a live audit to generate blockers.</p>
       ) : (
         <ul className="mt-2 space-y-2 text-sm">
           {topBlockers.map((blocker, idx) => (

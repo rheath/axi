@@ -61,14 +61,28 @@ export type Blocker = {
   mappedCategoryKeys: CategoryKey[];
 };
 
+export type RunProgressPhase = "preparing" | "fetching" | "extracting" | "scoring" | "finalizing";
+
+export type LiveAuditMeta = {
+  pagesAttempted: number;
+  pagesFetched: number;
+  robotsTxtAvailable: boolean;
+  sitemapAvailable: boolean;
+  durationMs: number;
+  warnings: string[];
+};
+
 export type RunState = {
+  mode: "live";
   status: "idle" | "running" | "done" | "error";
   startedAt?: string;
   finishedAt?: string;
   steps?: AuditorStep[];
   blockers?: Blocker[];
   progressMessage?: string;
+  progressPhase?: RunProgressPhase;
   errorMessage?: string;
+  liveMeta?: LiveAuditMeta;
 };
 
 export type PillarSummary = {
@@ -99,6 +113,20 @@ export type PillarDefinition = {
   key: PillarKey;
   name: string;
   weight: number;
+};
+
+export type AuditorCategoryUpdate = {
+  key: CategoryKey;
+  score0to5: number;
+  rationale: string;
+  evidenceUrls: string[];
+};
+
+export type AuditExecutionResult = {
+  steps: AuditorStep[];
+  blockers: Blocker[];
+  categoryUpdates: AuditorCategoryUpdate[];
+  crawlMeta: LiveAuditMeta;
 };
 
 export const PILLARS: PillarDefinition[] = [
@@ -175,6 +203,7 @@ export const CATEGORIES_SEED: CategoryScoreItem[] = [
     score0to5: 0
   },
   {
+    // Beta placeholder category kept scored to preserve a 3-category pillar average.
     key: "identifiers_linkage",
     pillarKey: "schema_interop",
     pillarName: "Schema & Interoperability",
@@ -248,10 +277,13 @@ export function initialHeader(): HeaderState {
 
 export function initialRunState(): RunState {
   return {
+    mode: "live",
     status: "idle",
     steps: [],
     blockers: [],
-    progressMessage: ""
+    progressMessage: "",
+    progressPhase: undefined,
+    liveMeta: undefined
   };
 }
 

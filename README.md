@@ -1,6 +1,6 @@
 # AXI MRI Scoring Tool (Public Beta)
 
-Client-side Next.js tool for MRI scoring with spreadsheet-style inputs, simulated AI audit, and print-friendly reporting.
+Next.js App Router tool for MRI scoring with a spreadsheet-style UI, live server-side audit, local autosave, and print-friendly reporting.
 
 ## Install and Run
 
@@ -17,9 +17,9 @@ Open [http://localhost:3000](http://localhost:3000).
 - `/score` scoring workspace
 - `/report` print-friendly report
 
-## How Scoring Works
+## Scoring Model
 
-The model has 5 fixed pillars with weights:
+The model uses 5 fixed pillars with weights:
 
 - Data & Rule Clarity: 25
 - Machine Trust & Reliability: 25
@@ -48,33 +48,34 @@ Risk bands:
 
 Displayed score is rounded to 1 decimal.
 
-## Run the Mock Audit
+## Run Live Audit
 
 1. Open `/score`.
 2. Enter target URL and task prompt.
 3. Set constraint toggles.
-4. Click **Run Audit**.
+4. Click **Run Live Audit**.
 
-The simulated auditor runs staged steps and returns:
+The live audit runs through `/api/live-audit` and:
 
-- Steps log
-- Blockers
-- Suggested category scores, rationales, and evidence URLs
+- Crawls homepage + up to 8 key internal links
+- Respects robots policy and records skipped URLs as warnings
+- Runs deterministic MRI checks from actual fetched HTML
+- Returns steps, blockers, evidence URLs, and crawl metadata
 
-You can manually override any category score afterward.
+Failure behavior is fail-hard (no mock fallback).
 
 ## Export / Import JSON
 
-Use the **State Tools** panel on `/score`:
+Use **State Tools** on `/score`:
 
 - **Export JSON** downloads current audit state.
-- **Import JSON** loads prior state and validates/scaffolds missing fields.
-- **Reset** clears all local state.
+- **Import JSON** restores a prior state (with validation/merging for required keys).
+- **Reset** clears local state.
 
-Autosave persists to `localStorage` and restores on refresh.
+Autosave persists in `localStorage`.
 
 ## Print Report
 
 1. Open `/report`.
 2. Click **Print / Save PDF**.
-3. Use browser print dialog to print or save as PDF.
+3. Use browser print dialog to print or save PDF.

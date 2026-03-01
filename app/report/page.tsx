@@ -86,6 +86,28 @@ export default function ReportPage() {
           <p className="mt-1 text-sm text-slate-700">Band: {computed.riskBand} ({riskLabel(computed.riskBand)})</p>
         </div>
 
+        <h2 className="mt-8 text-xl font-semibold">Live Crawl Metadata</h2>
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+          <p>Mode: {run.mode}</p>
+          <p>Status: {run.status}</p>
+          <p>
+            Pages: fetched {run.liveMeta?.pagesFetched ?? 0} / attempted {run.liveMeta?.pagesAttempted ?? 0}
+          </p>
+          <p>
+            robots.txt: {run.liveMeta?.robotsTxtAvailable ? "yes" : "no"} | sitemap.xml: {run.liveMeta?.sitemapAvailable ? "yes" : "no"}
+          </p>
+          <p>Duration: {run.liveMeta ? `${Math.round(run.liveMeta.durationMs)} ms` : "N/A"}</p>
+          {(run.liveMeta?.warnings?.length ?? 0) > 0 ? (
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-amber-700">
+              {(run.liveMeta?.warnings ?? []).map((warning, idx) => (
+                <li key={`${warning}-${idx}`}>{warning}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-slate-600">No crawl warnings recorded.</p>
+          )}
+        </div>
+
         <h2 className="mt-8 text-xl font-semibold">Pillar Breakdown</h2>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">

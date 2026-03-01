@@ -1,31 +1,22 @@
-# Axi AI Readiness Checker (MVP)
+# Axi AI Readiness Checker (Next.js MVP)
 
-A lightweight web app that scans a website URL and grades "AI readiness" with deterministic checks.
+A Next.js web app that scans a website URL and grades AI readiness using deterministic checks.
 
-## What it does
+## Features
 
-- Accepts a URL and crawls homepage + key internal links.
-- Scores six categories:
-  - Crawlability & Indexing
-  - Structured Data & Entity Clarity
-  - Content Extractability & Semantics
-  - Trust & Policy Signals
-  - Technical Performance & Accessibility
-  - Freshness & Discoverability
-- Returns:
-  - Overall AI Readiness Score (0-100)
-  - Category breakdown
-  - Prioritized fixes
-- Locks full report behind an email lead capture step.
+- URL scan (homepage + key internal pages)
+- Weighted AI readiness score (0-100)
+- Category breakdown and prioritized fixes
+- Lead-capture unlock for full report
+- API routes for scans and reports
 
-## Tech stack
+## Stack
 
-- Node.js + TypeScript
-- Express API
-- Cheerio HTML parsing
-- JSON file persistence (`/data/reports.json`, `/data/leads.json`)
+- Next.js (App Router) + TypeScript
+- Cheerio for HTML parsing
+- File-backed persistence in `/data`
 
-## Run locally
+## Local development
 
 ```bash
 npm install
@@ -34,15 +25,13 @@ npm run dev
 
 Open: [http://localhost:3000](http://localhost:3000)
 
-## API endpoints
+## API
 
 - `GET /api/health`
-- `POST /api/scans` with body `{ "url": "example.com" }`
+- `POST /api/scans` with `{ "url": "example.com" }`
 - `GET /api/reports/:id`
-- `POST /api/reports/:id/lead` with body `{ "email": "you@company.com", "consent": true }`
+- `POST /api/reports/:id/lead` with `{ "email": "you@company.com", "consent": true }`
 
-## Notes
+## Deploy
 
-- This MVP uses deterministic heuristics, not LLM scoring.
-- No auth or billing included.
-- Internal links are selected heuristically and capped.
+This repo is now structured as a standard Next.js app for Hostinger Git deployment.

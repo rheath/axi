@@ -1,6 +1,6 @@
 import { load } from "cheerio";
-import type { CategoryId, CategoryScore, Check, Report } from "./types.js";
-import type { CrawlResult } from "./crawler.js";
+import type { CrawlResult } from "./crawler";
+import type { CategoryId, CategoryScore, Check, Report } from "./types";
 
 const CATEGORY_META: Record<CategoryId, { label: string; weight: number }> = {
   crawlability: { label: "Crawlability & Indexing", weight: 20 },
@@ -11,12 +11,7 @@ const CATEGORY_META: Record<CategoryId, { label: string; weight: number }> = {
   freshness: { label: "Freshness & Discoverability", weight: 10 }
 };
 
-const OUTCOME_SCORE = {
-  pass: 1,
-  warn: 0.5,
-  fail: 0,
-  na: 0.7
-} as const;
+const OUTCOME_SCORE = { pass: 1, warn: 0.5, fail: 0, na: 0.7 } as const;
 
 function pct(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -32,7 +27,7 @@ function makeCheck(input: Omit<Check, "id">): Check {
 function analyzePageBasics(url: string, html: string): Check[] {
   const $ = load(html);
   const title = $("title").text().trim();
-  const description = $("meta[name='description']").attr("content")?.trim() || "";
+  const description = $("meta[name='description']").attr("content")?.trim() ?? "";
   const h1 = $("h1").first().text().trim();
   const canonical = $("link[rel='canonical']").attr("href")?.trim();
   const ldJsonCount = $("script[type='application/ld+json']").length;
@@ -93,7 +88,7 @@ function analyzePageBasics(url: string, html: string): Check[] {
       description: "Checks for Open Graph metadata presence.",
       impactWeight: 3,
       outcome: ogTitle ? "pass" : "warn",
-      evidence: ogTitle ? `og:title present` : "Missing og:title",
+      evidence: ogTitle ? "og:title present" : "Missing og:title",
       recommendation: "Add Open Graph tags for richer machine context."
     }),
     makeCheck({
@@ -155,7 +150,7 @@ export function scoreCrawl(crawl: CrawlResult): Omit<Report, "id" | "createdAt" 
     })
   );
 
-  const combinedText = [crawl.homepage, ...crawl.pages].map((p) => p.html.toLowerCase()).join(" ");
+  const combinedText = pages.map((p) => p.html.toLowerCase()).join(" ");
   const hasPrivacy = /privacy policy/.test(combinedText);
   const hasTerms = /terms of service|terms & conditions|terms and conditions/.test(combinedText);
   const hasContact = /contact us|support@|mailto:/.test(combinedText);
@@ -190,7 +185,8 @@ export function scoreCrawl(crawl: CrawlResult): Omit<Report, "id" | "createdAt" 
     })
   );
 
-  const avgBytes = pages.reduce((sum, p) => sum + p.bytes, 0) / Math.max(1, pages.length);
+  const avgBytes = pages.reduce((sum, page) => sum + page.bytes, 0) / Math.max(1, pages.length);
+
   checks.push(
     makeCheck({
       categoryId: "performance",
@@ -214,7 +210,7 @@ export function scoreCrawl(crawl: CrawlResult): Omit<Report, "id" | "createdAt" 
 
   const categoryScores: CategoryScore[] = (Object.keys(CATEGORY_META) as CategoryId[]).map((categoryId) => {
     const meta = CATEGORY_META[categoryId];
-    const inCategory = checks.filter((c) => c.categoryId === categoryId);
+    const inCategory = checks.filter((check) => check.categoryId === categoryId);
 
     let weighted = 0;
     let weights = 0;
@@ -223,24 +219,22 @@ export function scoreCrawl(crawl: CrawlResult): Omit<Report, "id" | "createdAt" 
       weights += check.impactWeight;
     }
 
-    const score = weights === 0 ? 0 : pct((weighted / weights) * 100);
     return {
       categoryId,
       label: meta.label,
       weight: meta.weight,
-      score
+      score: weights === 0 ? 0 : pct((weighted / weights) * 100)
     };
   });
 
-  const overallRaw = categoryScores.reduce((sum, c) => sum + c.score * c.weight, 0) / 100;
-  const overallScore = pct(overallRaw);
+  const overallScore = pct(categoryScores.reduce((sum, score) => sum + score.score * score.weight, 0) / 100);
 
   const topFixes = checks
-    .filter((c) => c.outcome !== "pass")
+    .filter((check) => check.outcome !== "pass")
     .sort((a, b) => {
       const rank = (check: Check) => {
-        const outcomePenalty = check.outcome === "fail" ? 2 : check.outcome === "warn" ? 1 : 0;
-        return outcomePenalty * check.impactWeight;
+        const penalty = check.outcome === "fail" ? 2 : check.outcome === "warn" ? 1 : 0;
+        return penalty * check.impactWeight;
       };
       return rank(b) - rank(a);
     })

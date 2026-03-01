@@ -18,9 +18,9 @@ export type CrawlResult = {
 };
 
 function normalizeUrl(input: string): string {
-  const value = input.trim();
-  const ensured = value.startsWith("http://") || value.startsWith("https://") ? value : `https://${value}`;
-  const url = new URL(ensured);
+  const base = input.trim();
+  const withProtocol = base.startsWith("http://") || base.startsWith("https://") ? base : `https://${base}`;
+  const url = new URL(withProtocol);
   url.hash = "";
   return url.toString();
 }
@@ -28,7 +28,7 @@ function normalizeUrl(input: string): string {
 async function fetchText(url: string): Promise<{ status: number; headers: Record<string, string>; text: string; bytes: number }> {
   const response = await fetch(url, {
     headers: {
-      "user-agent": "AxiAIReadinessBot/0.1 (+https://example.com/bot)",
+      "user-agent": "AxiAIReadinessBot/0.2",
       accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
     },
     redirect: "follow"
@@ -36,8 +36,8 @@ async function fetchText(url: string): Promise<{ status: number; headers: Record
 
   const text = await response.text();
   const headers: Record<string, string> = {};
-  response.headers.forEach((v, k) => {
-    headers[k.toLowerCase()] = v;
+  response.headers.forEach((value, key) => {
+    headers[key.toLowerCase()] = value;
   });
 
   return {
@@ -51,50 +51,42 @@ async function fetchText(url: string): Promise<{ status: number; headers: Record
 function chooseKeyLinks(homeUrl: string, html: string, limit = 10): string[] {
   const $ = load(html);
   const root = new URL(homeUrl);
-  const hrefs = new Set<string>();
-  const priorityFragments = ["about", "pricing", "product", "blog", "docs", "contact", "faq", "privacy", "terms"];
+  const links = new Set<string>();
+  const priority = ["about", "pricing", "product", "blog", "docs", "contact", "faq", "privacy", "terms"];
 
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href");
     if (!href) return;
+    if (["mailto:", "tel:", "javascript:"].some((prefix) => href.startsWith(prefix))) return;
 
     try {
-      const resolved = new URL(href, root).toString();
-      const parsed = new URL(resolved);
-      if (parsed.hostname !== root.hostname) return;
-      if (["mailto:", "tel:", "javascript:"].some((bad) => href.startsWith(bad))) return;
-      parsed.hash = "";
-      parsed.searchParams.forEach((_, key) => {
-        if (key.startsWith("utm_")) {
-          parsed.searchParams.delete(key);
-        }
-      });
-      hrefs.add(parsed.toString());
+      const resolved = new URL(href, root);
+      if (resolved.hostname !== root.hostname) return;
+      resolved.hash = "";
+      for (const key of [...resolved.searchParams.keys()]) {
+        if (key.startsWith("utm_")) resolved.searchParams.delete(key);
+      }
+      links.add(resolved.toString());
     } catch {
       return;
     }
   });
 
-  const sorted = Array.from(hrefs).sort((a, b) => {
-    const aScore = priorityFragments.some((f) => a.toLowerCase().includes(f)) ? 1 : 0;
-    const bScore = priorityFragments.some((f) => b.toLowerCase().includes(f)) ? 1 : 0;
-    return bScore - aScore;
-  });
-
-  return sorted.filter((u) => u !== root.toString()).slice(0, limit);
+  return [...links]
+    .filter((item) => item !== root.toString())
+    .sort((a, b) => {
+      const aScore = priority.some((p) => a.toLowerCase().includes(p)) ? 1 : 0;
+      const bScore = priority.some((p) => b.toLowerCase().includes(p)) ? 1 : 0;
+      return bScore - aScore;
+    })
+    .slice(0, limit);
 }
 
 export async function crawlWebsite(urlInput: string): Promise<CrawlResult> {
   const normalizedUrl = normalizeUrl(urlInput);
   const warnings: string[] = [];
 
-  let homepageFetch: Awaited<ReturnType<typeof fetchText>>;
-  try {
-    homepageFetch = await fetchText(normalizedUrl);
-  } catch (error) {
-    throw new Error(`Unable to fetch homepage: ${(error as Error).message}`);
-  }
-
+  const homepageFetch = await fetchText(normalizedUrl);
   const homepage: PageSnapshot = {
     url: normalizedUrl,
     status: homepageFetch.status,
@@ -111,10 +103,8 @@ export async function crawlWebsite(urlInput: string): Promise<CrawlResult> {
     fetch(sitemapUrl).then((r) => r.ok).catch(() => false)
   ]);
 
-  const keyLinks = chooseKeyLinks(normalizedUrl, homepage.html);
   const pages: PageSnapshot[] = [];
-
-  for (const link of keyLinks) {
+  for (const link of chooseKeyLinks(normalizedUrl, homepage.html)) {
     try {
       const fetched = await fetchText(link);
       pages.push({
@@ -133,12 +123,5 @@ export async function crawlWebsite(urlInput: string): Promise<CrawlResult> {
     warnings.push("Only homepage analyzed. Could not retrieve internal links.");
   }
 
-  return {
-    normalizedUrl,
-    homepage,
-    pages,
-    robotsTxtExists,
-    sitemapExists,
-    warnings
-  };
+  return { normalizedUrl, homepage, pages, robotsTxtExists, sitemapExists, warnings };
 }

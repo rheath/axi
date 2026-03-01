@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Axi AI Readiness Checker",
-  description: "Scan any website URL and get an AI readiness score with prioritized fixes."
+  title: "AXI MRI Scoring Tool",
+  description: "AXI public beta MRI scoring model tool"
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-slate-50 text-slate-900">{children}</body>
     </html>
   );
 }

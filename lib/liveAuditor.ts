@@ -3,7 +3,8 @@ import { normalizeTargetUrl, selectKeyInternalLinks } from "./linkSelector";
 import type { AuditExecutionResult, Blocker, CategoryKey, HeaderState } from "./mriModel";
 
 const MAX_TOTAL_PAGES = 8;
-const MAX_PAGE_BYTES = 750_000;
+// CVS-sized homepages can exceed 20MB; allow larger payloads for live beta audits.
+const MAX_PAGE_BYTES = 25_000_000;
 const REQUEST_TIMEOUT_MS = 6_000;
 const TOTAL_TIMEOUT_MS = 25_000;
 const USER_AGENT = "AXI-LiveAuditor/1.0 (+https://axi.idrawcircles.com/)";
